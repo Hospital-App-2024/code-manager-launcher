@@ -1,0 +1,6 @@
+[submodule "code-manager-frontend"]
+	path = code-manager-frontend
+	url = https://github.com/Hospital-App-2024/code-manager-frontend.git
+[submodule "code-manager-backend"]
+	path = code-manager-backend
+	url = https://github.com/Hospital-App-2024/code-manager-backend.git
