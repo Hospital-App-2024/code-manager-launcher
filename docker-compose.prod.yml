@@ -1,0 +1,30 @@
+services:
+  code-manager-backend:
+    build:
+      context: ./code-manager-backend
+      dockerfile: dockerfile.prod
+      args:
+        - DATABASE_URL=${DATABASE_URL}
+    ports:
+      - ${CODE_MANAGER_BACKEND_PORT}:${CODE_MANAGER_BACKEND_PORT}
+    environment:
+      - NODE_ENV=production
+      - PORT=${CODE_MANAGER_BACKEND_PORT}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_TOKEN_EXPIRATION=${JWT_TOKEN_EXPIRATION}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - DATABASE_URL=${DATABASE_URL}
+  code-manager-frontend:
+    build:
+      context: ./code-manager-frontend
+      dockerfile: dockerfile
+      args:
+        - CODE_MANAGER_FRONTEND_PORT=${CODE_MANAGER_FRONTEND_PORT}
+    ports:
+      - ${CODE_MANAGER_FRONTEND_PORT}:${CODE_MANAGER_FRONTEND_PORT}
+    environment:
+      - URL_BACKEND=${URL_BACKEND}
+      - NEXT_PUBLIC_URL_BACKEND=${URL_BACKEND}
+      - NEXTAUTH_URL=${URL_FRONTEND}
+      - URL_FRONTEND=${URL_FRONTEND}
+      - AUTH_SECRET=${AUTH_SECRET}
