@@ -14,6 +14,9 @@ services:
       - JWT_TOKEN_EXPIRATION=${JWT_TOKEN_EXPIRATION}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
       - DATABASE_URL=${DATABASE_URL}
+    restart: always
+    networks:
+      - code-manager-network
   code-manager-frontend:
     build:
       context: ./code-manager-frontend
@@ -24,7 +27,13 @@ services:
       - ${CODE_MANAGER_FRONTEND_PORT}:${CODE_MANAGER_FRONTEND_PORT}
     environment:
       - URL_BACKEND=${URL_BACKEND}
-      - NEXT_PUBLIC_URL_BACKEND=${URL_BACKEND}
-      - NEXTAUTH_URL=${URL_FRONTEND}
+      - NEXT_PUBLIC_URL_BACKEND=${NEXT_PUBLIC_URL_BACKEND}
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
       - URL_FRONTEND=${URL_FRONTEND}
       - AUTH_SECRET=${AUTH_SECRET}
+    restart: always
+    networks:
+      - code-manager-network
+
+networks:
+  code-manager-network:
