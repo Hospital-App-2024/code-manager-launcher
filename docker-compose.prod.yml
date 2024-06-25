@@ -1,13 +1,10 @@
 services:
   code-manager-backend:
-    depends_on:
-      - code-manager-database
     build:
       context: ./code-manager-backend
       dockerfile: dockerfile.prod
       args:
         - DATABASE_URL=${DATABASE_URL}
-    image: code-manager-backend
     ports:
       - ${CODE_MANAGER_BACKEND_PORT}:${CODE_MANAGER_BACKEND_PORT}
     environment:
@@ -26,7 +23,6 @@ services:
       dockerfile: dockerfile
       args:
         - CODE_MANAGER_FRONTEND_PORT=${CODE_MANAGER_FRONTEND_PORT}
-    image: code-manager-frontend
     ports:
       - ${CODE_MANAGER_FRONTEND_PORT}:${CODE_MANAGER_FRONTEND_PORT}
     environment:
@@ -36,19 +32,6 @@ services:
       - URL_FRONTEND=${URL_FRONTEND}
       - AUTH_SECRET=${AUTH_SECRET}
     restart: always
-    networks:
-      - code-manager-network
-  code-manager-database:
-    image: postgres:16
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-    volumes:
-      - code-manager-data:/var/lib/postgresql/data
-    restart: always
-    ports:
-      - ${POSTGRES_PORT}:${POSTGRES_PORT}
     networks:
       - code-manager-network
 networks:
