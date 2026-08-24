@@ -38,8 +38,11 @@ Para empatar con el STI del backend, el frontend no duplica vistas.
 - **Formularios Dinámicos**: En `src/app/(code)/components/form/EmergencyCodeForm.tsx` utilizamos React Hook Form y renderizado condicional. Si la prop es `type="GREEN"`, el componente renderizará los inputs de Carabineros y Evento; si es `type="BLUE"`, mostrará Equipo, etc.
 - **Tablas Dinámicas**: `EmergencyCodeTable` toma el tipo, inyecta las columnas de `columns.tsx` correspondientes y procesa los modales de edición sin duplicar lógica de estado.
 - **Server Actions Unificados**: En `src/actions/emergencyCodes/` tenemos `getEmergencyCodes` que recibe el `type` y despacha a la misma API, centralizando el caché y la revalidación.
-- **Manejo de Estado y Caché (React Query)**: Utilizamos `useQuery` para el fetching dinámico desde el cliente en componentes de tabla, con `staleTime` para optimizar rendimiento. Al realizar mutaciones (crear/editar) en el `EmergencyCodeForm`, se invalida programáticamente la caché (`queryClient.invalidateQueries`) para garantizar frescura inmediata de los datos al retornar a la tabla.
-- **Cierre de Códigos (Flujo Operativo)**: Los códigos pueden ser "Finalizados" en diferido (editando el registro existente). Esto se maneja dinámicamente en el formulario habilitando los campos `isClosed`, `closedBy` y `closedAt`.
+- **Manejo de Estado y Caché (React Query)**: Utilizamos `useQuery` para el fetching dinámico desde el cliente en componentes de tabla, con `staleTime` para optimizar rendimiento. Al realizar mutaciones (crear/editar/cerrar) en `EmergencyCodeForm` o `CloseCodeModal`, se invalida programáticamente la caché (`queryClient.invalidateQueries`) para garantizar consistencia inmediata de los datos sin recargar la página.
+- **Cierre Rápido y Ciclo de Vida Operativo**:
+  - Modal directo (`CloseCodeModal`): Permite a los operadores dar por concluido un código activo directamente desde la tabla, exigiendo obligatoriamente el nombre de quien finaliza (`closedBy`) y permitiendo ajuste manual de fecha/hora (`closedAt`).
+  - Formulario Unificado (`EmergencyCodeForm`): Permite la captura precisa y manual de la hora de activación (`activationTime`), la hora de llamado a bomberos (`firefighterCalledTime` en Código Rojo) y los campos de cierre diferido.
+  - Vistas de Creación Estandarizadas: Todas las rutas `/code-[tipo]/create` comparten una experiencia homogénea con navegación de retorno y botón unificado "Crear código [tipo]".
 
 ## Stack Tecnológico
 - **Backend**: NestJS 10, Prisma ORM 7.x, PostgreSQL 14+.
