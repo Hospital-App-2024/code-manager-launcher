@@ -24,6 +24,31 @@ UNION ALL SELECT 'RED', COUNT(*) FROM "CodeRed"
 UNION ALL SELECT 'LEAK', COUNT(*) FROM "CodeLeak";
 ```
 
+Registrar también el estado de cierre de los Códigos Verdes. La migración
+conserva `observations` y el cierre (`closedBy`, `closedAt`) de cada código:
+
+```sql
+SELECT
+  COUNT(*) FILTER (WHERE "isClosed") AS cerrados,
+  COUNT(*) FILTER (
+    WHERE "isClosed"
+      AND (NULLIF(BTRIM("closedBy"), '') IS NULL OR "closedAt" IS NULL OR "closedAt" < "createdAt")
+  ) AS cerrados_incompletos,
+  COUNT(*) FILTER (
+    WHERE NOT "isClosed"
+      AND NULLIF(BTRIM("closedBy"), '') IS NOT NULL
+      AND "closedAt" IS NOT NULL AND "closedAt" >= "createdAt"
+  ) AS cerrados_con_bandera_desactualizada
+FROM "CodeGreen";
+```
+
+- `cerrados_incompletos` debe ser `0`: si no, la migración aborta sin modificar
+  nada y esos códigos hay que corregirlos antes (nombre y fecha de cierre).
+- `cerrados_con_bandera_desactualizada` son códigos con `isClosed = false` pero
+  con nombre y fecha de cierre completos; se migran como cerrados.
+- Un código abierto con datos de cierre a medias (solo nombre o solo fecha) se
+  migra abierto y esos datos se descartan; siguen en la tabla legacy.
+
 Registrar también los equipos escritos en los Códigos Azules, que la
 migración `20261003120000_blue_teams_cogrid_time_closure_operator` convierte al
 enum `BlueTeam` (`EMERGENCY`, `ICU`, `PEDIATRIC_ICU`):
@@ -83,6 +108,15 @@ WHERE type <> 'GREEN'
 ```
 
 El resultado esperado para las dos últimas consultas es `0`.
+
+Comprobar que los Códigos Verdes cerrados coinciden con el preflight
+(`cerrados` + `cerrados_con_bandera_desactualizada`):
+
+```sql
+SELECT COUNT(*) AS verdes_cerrados
+FROM "EmergencyCode"
+WHERE type = 'GREEN' AND "closedAt" IS NOT NULL;
+```
 
 Comprobar además que ningún Código Azul quedó sin equipos:
 
