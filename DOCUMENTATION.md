@@ -24,8 +24,11 @@ En lugar de tener una tabla en la base de datos para cada tipo de código de eme
   - `@@index([activationTime(sort: Desc)])`: Optimiza consultas globales y estadísticas mensuales.
   - `@@index([operatorId])`: Indexa la clave foránea en PostgreSQL para acelerar los `JOIN` y validaciones referenciales.
 - **Cierre exclusivo del Código Verde**:
-  - `isClosed`, `closedBy` y `closedAt` solo admiten valores para `GREEN`; los demás tipos mantienen estos campos en `NULL`.
-  - Un cierre exige responsable, fecha y `closedAt >= activationTime`.
+  - `closedBy`, `closedAt` y `closedByOperatorId` solo admiten valores para `GREEN`; los demás tipos mantienen estos campos en `NULL`. No existe un indicador `isClosed`: un código está abierto mientras `closedAt` es `NULL`.
+  - Un cierre exige el funcionario que lo cierra (`closedBy`), la fecha (`closedAt >= activationTime`) y el operador que registra el cierre (`closedByOperatorId`, relación a `Operator` con `ON DELETE RESTRICT`). Los cierres históricos previos a este campo conservan `closedByOperatorId` en `NULL`.
+- **Campos propios de Código Azul y Código Rojo**:
+  - `teams` (`BlueTeam[]`: `EMERGENCY`, `ICU`, `PEDIATRIC_ICU`) admite uno o más equipos por Código Azul, sin repetidos; es una lista vacía en los demás tipos.
+  - `cogridNotified` indica si hubo comunicación con COGRID y `cogridNotifiedAt` registra la fecha y hora de esa comunicación. Es opcional, solo se admite si `cogridNotified` es verdadero y no puede ser anterior a `activationTime`.
 
 ### Gestión de Conexiones y Seeding (Prisma ORM v7)
 - **Configuración Centralizada**: Prisma 7 utiliza `prisma.config.ts` en la raíz del backend para la configuración del datasource `DATABASE_URL` en migraciones y herramientas CLI.
@@ -36,12 +39,12 @@ En lugar de tener una tabla en la base de datos para cada tipo de código de eme
 ## Arquitectura del Cliente (Frontend - Next.js)
 ### Componentes Universales
 Para empatar con el STI del backend, el frontend no duplica vistas.
-- **Formularios Dinámicos**: En `src/app/(code)/components/form/EmergencyCodeForm.tsx` utilizamos React Hook Form y renderizado condicional. Si la prop es `type="GREEN"`, el componente renderizará los inputs de Carabineros y Evento; si es `type="BLUE"`, mostrará Equipo, etc.
+- **Formularios Dinámicos**: En `src/app/(code)/components/form/EmergencyCodeForm.tsx` utilizamos React Hook Form y renderizado condicional. Si la prop es `type="GREEN"`, el componente renderizará los inputs de Carabineros y Evento; si es `type="BLUE"`, mostrará la selección de uno o más equipos, etc.
 - **Tablas Dinámicas**: `EmergencyCodeTable` toma el tipo, inyecta las columnas de `columns.tsx` correspondientes y procesa los modales de edición sin duplicar lógica de estado.
 - **Server Actions Unificados**: En `src/actions/emergencyCodes/` tenemos `getEmergencyCodes` que recibe el `type` y despacha a la misma API, centralizando el caché y la revalidación.
 - **Manejo de Estado y Caché (React Query)**: Utilizamos `useQuery` para el fetching dinámico desde el cliente en componentes de tabla, con `staleTime` para optimizar rendimiento. Al realizar mutaciones (crear/editar/cerrar) en `EmergencyCodeForm` o `CloseCodeModal`, se invalida programáticamente la caché (`queryClient.invalidateQueries`) para garantizar consistencia inmediata de los datos sin recargar la página.
 - **Cierre de Código Verde**:
-  - `CloseCodeModal` solo aparece para `GREEN` y exige el nombre de quien finaliza (`closedBy`) y la fecha/hora (`closedAt`).
+  - `CloseCodeModal` solo aparece para `GREEN` y exige el nombre de quien finaliza (`closedBy`), la fecha/hora (`closedAt`) y el operador que registra el cierre (`closedByOperatorId`, elegido de la lista de operadores).
   - Formulario Unificado (`EmergencyCodeForm`): Permite la captura precisa y manual de la hora de activación (`activationTime`), la hora de llamado a bomberos (`firefighterCalledTime` en Código Rojo) y los campos de cierre diferido.
   - Vistas de Creación Estandarizadas: Todas las rutas `/code-[tipo]/create` comparten una experiencia homogénea con navegación de retorno y botón unificado "Crear código [tipo]".
 

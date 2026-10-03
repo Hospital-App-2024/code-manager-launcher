@@ -24,6 +24,19 @@ UNION ALL SELECT 'RED', COUNT(*) FROM "CodeRed"
 UNION ALL SELECT 'LEAK', COUNT(*) FROM "CodeLeak";
 ```
 
+Registrar también los equipos escritos en los Códigos Azules, que la
+migración `20261003120000_blue_teams_cogrid_time_closure_operator` convierte al
+enum `BlueTeam` (`EMERGENCY`, `ICU`, `PEDIATRIC_ICU`):
+
+```sql
+SELECT "team", COUNT(*) FROM "CodeBlue" GROUP BY "team" ORDER BY 2 DESC;
+```
+
+Se reconocen urgencia(s), UCI y UCI pediátrica, con o sin el prefijo
+"Equipo", con o sin tildes y en cualquier capitalización. Si aparece otro
+valor, esa migración aborta nombrándolo y no modifica nada: hay que ampliar su
+tabla de equivalencias antes de la ventana de mantenimiento.
+
 La propia migración aborta transaccionalmente si falta una tabla, existe
 `EmergencyCode`, hay IDs repetidos entre orígenes, existen operadores
 huérfanos o no coinciden los conteos copiados.
@@ -66,10 +79,20 @@ WHERE operator.id IS NULL;
 SELECT COUNT(*) AS invalid_non_green_closures
 FROM "EmergencyCode"
 WHERE type <> 'GREEN'
-  AND ("isClosed" IS NOT NULL OR "closedBy" IS NOT NULL OR "closedAt" IS NOT NULL);
+  AND ("closedBy" IS NOT NULL OR "closedAt" IS NOT NULL OR "closedByOperatorId" IS NOT NULL);
 ```
 
 El resultado esperado para las dos últimas consultas es `0`.
+
+Comprobar además que ningún Código Azul quedó sin equipos:
+
+```sql
+SELECT COUNT(*) AS blue_without_teams
+FROM "EmergencyCode"
+WHERE type = 'BLUE' AND cardinality(teams) = 0;
+```
+
+El resultado esperado es `0`.
 
 ## Rollback
 
