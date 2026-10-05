@@ -1,3 +1,7 @@
+# Uso (desde la raíz, con un .env creado a partir de .env.example):
+#   docker compose -f docker-compose.prod.yml build
+#   docker compose -f docker-compose.prod.yml --profile migration run --rm code-manager-migrate
+#   docker compose -f docker-compose.prod.yml up -d
 services:
   code-manager-backend:
     build:
@@ -5,45 +9,62 @@ services:
       dockerfile: dockerfile.prod
       target: production
     ports:
-      - ${CODE_MANAGER_BACKEND_PORT}:${CODE_MANAGER_BACKEND_PORT}
+      - ${CODE_MANAGER_BACKEND_PORT:?Falta CODE_MANAGER_BACKEND_PORT en .env}:${CODE_MANAGER_BACKEND_PORT}
     environment:
       - NODE_ENV=production
       - PORT=${CODE_MANAGER_BACKEND_PORT}
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_TOKEN_EXPIRATION=${JWT_TOKEN_EXPIRATION}
-      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
-      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET:?Falta JWT_SECRET en .env}
+      - JWT_TOKEN_EXPIRATION=${JWT_TOKEN_EXPIRATION:-7d}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:?Falta JWT_REFRESH_SECRET en .env}
+      - DATABASE_URL=${DATABASE_URL:?Falta DATABASE_URL en .env}
+    # host.docker.internal only exists by default on Docker Desktop (Windows/Mac); this maps it on Linux.
+    extra_hosts:
+      - host.docker.internal:host-gateway
     restart: always
     networks:
       - code-manager-network
+
+  # Job de Prisma (no arranca con `up`). Por defecto ejecuta `prisma migrate deploy`;
+  # acepta otros comandos, p. ej. `pnpm exec prisma migrate status` o `pnpm run db:seed`.
   code-manager-migrate:
     build:
       context: ./code-manager-backend
       dockerfile: dockerfile.prod
       target: migrate
     environment:
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=${DATABASE_URL:?Falta DATABASE_URL en .env}
+      - ADMIN_SEED_EMAIL=${ADMIN_SEED_EMAIL:-}
+      - ADMIN_SEED_PASSWORD=${ADMIN_SEED_PASSWORD:-}
+      - ADMIN_SEED_NAME=${ADMIN_SEED_NAME:-}
+    extra_hosts:
+      - host.docker.internal:host-gateway
     profiles:
       - migration
     restart: "no"
     networks:
       - code-manager-network
+
   code-manager-frontend:
     build:
       context: ./code-manager-frontend
       dockerfile: dockerfile
       args:
-        - CODE_MANAGER_FRONTEND_PORT=${CODE_MANAGER_FRONTEND_PORT}
+        - CODE_MANAGER_FRONTEND_PORT=${CODE_MANAGER_FRONTEND_PORT:?Falta CODE_MANAGER_FRONTEND_PORT en .env}
+        # Se incrusta en el bundle del navegador: debe ser la IP/host accesible por los usuarios.
+        - NEXT_PUBLIC_URL_BACKEND=${NEXT_PUBLIC_URL_BACKEND:?Falta NEXT_PUBLIC_URL_BACKEND en .env}
     ports:
       - ${CODE_MANAGER_FRONTEND_PORT}:${CODE_MANAGER_FRONTEND_PORT}
     environment:
-      - URL_BACKEND=${URL_BACKEND}
+      - URL_BACKEND=${URL_BACKEND:?Falta URL_BACKEND en .env}
       - NEXT_PUBLIC_URL_BACKEND=${NEXT_PUBLIC_URL_BACKEND}
-      - NEXTAUTH_URL=${NEXTAUTH_URL}
-      - URL_FRONTEND=${URL_FRONTEND}
-      - AUTH_SECRET=${AUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:?Falta NEXTAUTH_URL en .env}
+      - URL_FRONTEND=${URL_FRONTEND:-}
+      - AUTH_SECRET=${AUTH_SECRET:?Falta AUTH_SECRET en .env}
+    depends_on:
+      - code-manager-backend
     restart: always
     networks:
       - code-manager-network
+
 networks:
   code-manager-network:

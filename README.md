@@ -2,18 +2,64 @@
 
 # Instalación de la aplicación en Producción
 
-1. Clone el repositorio
-2. Reconstruya los submodules
+Todos los comandos se ejecutan **desde la raíz** del repositorio.
+
+1. Clone el repositorio con los submódulos (si ya lo clonó sin ellos, las carpetas `code-manager-backend` y `code-manager-frontend` quedan vacías y el build falla)
+
+```bash
+git clone --recurse-submodules https://github.com/Hospital-App-2024/code-manager-launcher.git
+```
 
 ```bash
 git submodule update --init --recursive
 ```
 
-3. Construya la imagen de docker
+2. Cree el archivo `.env` en la raíz a partir de `.env.example` y ajuste los valores:
+   - `DATABASE_URL`: PostgreSQL accesible desde el contenedor. Si la base corre en el mismo equipo use `host.docker.internal` (funciona en Windows, Mac y Linux).
+   - `NEXT_PUBLIC_URL_BACKEND`: IP/host del servidor **visible desde los navegadores** de los usuarios (no `localhost`). Se incrusta en el frontend al construir: si cambia, hay que reconstruir.
+   - `AUTH_SECRET`, `JWT_SECRET`, `JWT_REFRESH_SECRET`: valores propios de esta instalación.
 
 ```bash
-docker compose -f docker-compose.yml build
+cp .env.example .env
 ```
+
+3. Construya las imágenes (`--pull` actualiza la imagen base de Node si en ese equipo hay una vieja en caché)
+
+```bash
+docker compose -f docker-compose.prod.yml --profile migration build --pull
+```
+
+4. Aplique las migraciones de Prisma (job aparte; no se ejecuta con `up`)
+
+```bash
+docker compose -f docker-compose.prod.yml --profile migration run --rm code-manager-migrate
+```
+
+5. Levante la aplicación
+
+```bash
+docker compose -f docker-compose.prod.yml up -d
+```
+
+### Comandos de Prisma en producción
+
+Todos usan el servicio `code-manager-migrate` (imagen del backend con dependencias de desarrollo y la `DATABASE_URL` del `.env` de la raíz).
+
+| Acción | Comando |
+|---|---|
+| Aplicar migraciones pendientes | `docker compose -f docker-compose.prod.yml --profile migration run --rm code-manager-migrate` |
+| Ver estado de migraciones | `docker compose -f docker-compose.prod.yml --profile migration run --rm code-manager-migrate pnpm exec prisma migrate status` |
+| Crear usuario administrador inicial (requiere `ADMIN_SEED_*` en `.env`) | `docker compose -f docker-compose.prod.yml --profile migration run --rm code-manager-migrate pnpm run db:seed` |
+| Versión de Prisma | `docker compose -f docker-compose.prod.yml --profile migration run --rm code-manager-migrate pnpm exec prisma --version` |
+
+Si se actualiza el código (`git pull` + `git submodule update`), reconstruya y repita los pasos 3 a 5.
+
+### Problemas frecuentes
+
+- **`Cannot find matching keyid`** o errores de corepack/pnpm: reconstruir con `--pull`. Los Dockerfile ya instalan pnpm con npm, sin corepack.
+- **`permission denied` sobre `code-manager-backend/postgres`** al construir: es la carpeta de datos de la base local; ya está excluida en `.dockerignore`.
+- **El frontend llama a `localhost:3002`** desde el navegador: `NEXT_PUBLIC_URL_BACKEND` estaba mal al construir; corregir el `.env` y reconstruir el frontend.
+- **`Falta XXX en .env`**: no existe el `.env` en la raíz o le falta esa variable.
 
 ### Pasos para crear los Git Submodules
 
