@@ -16,7 +16,8 @@ git submodule update --init --recursive
 
 2. Cree el archivo `.env` en la raíz a partir de `.env.example` y ajuste los valores:
    - `DATABASE_URL`: PostgreSQL accesible desde el contenedor. Si la base corre en el mismo equipo use `host.docker.internal` (funciona en Windows, Mac y Linux).
-   - `NEXT_PUBLIC_URL_BACKEND`: IP/host del servidor **visible desde los navegadores** de los usuarios (no `localhost`). Se incrusta en el frontend al construir: si cambia, hay que reconstruir.
+   - `URL_BACKEND`: backend visto **desde el contenedor del frontend**: `http://code-manager-backend:<CODE_MANAGER_BACKEND_PORT>/api` (no `localhost` ni la IP). El navegador no llama al backend directo: pasa por el frontend (`/api/backend`), así que no hace falta configurar la IP ni abrir el puerto del backend.
+   - `NEXTAUTH_URL`: URL con la que los usuarios abren la app, p. ej. `http://<IP-del-servidor>:8080`.
    - `AUTH_SECRET`, `JWT_SECRET`, `JWT_REFRESH_SECRET`: valores propios de esta instalación.
 
 ```bash
@@ -58,7 +59,7 @@ Si se actualiza el código (`git pull` + `git submodule update`), reconstruya y 
 
 - **`Cannot find matching keyid`** o errores de corepack/pnpm: reconstruir con `--pull`. Los Dockerfile ya instalan pnpm con npm, sin corepack.
 - **`permission denied` sobre `code-manager-backend/postgres`** al construir: es la carpeta de datos de la base local; ya está excluida en `.dockerignore`.
-- **El frontend llama a `localhost:3002`** desde el navegador: `NEXT_PUBLIC_URL_BACKEND` estaba mal al construir; corregir el `.env` y reconstruir el frontend.
+- **No hace login o no cargan los datos**: revisar que `URL_BACKEND` use el nombre del servicio (`code-manager-backend`) y el puerto de `CODE_MANAGER_BACKEND_PORT`, no `localhost`. Los logs del frontend muestran el error: `docker compose -f docker-compose.prod.yml logs code-manager-frontend`.
 - **`Falta XXX en .env`**: no existe el `.env` en la raíz o le falta esa variable.
 
 ### Pasos para crear los Git Submodules

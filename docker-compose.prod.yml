@@ -50,13 +50,12 @@ services:
       dockerfile: dockerfile
       args:
         - CODE_MANAGER_FRONTEND_PORT=${CODE_MANAGER_FRONTEND_PORT:?Falta CODE_MANAGER_FRONTEND_PORT en .env}
-        # Se incrusta en el bundle del navegador: debe ser la IP/host accesible por los usuarios.
-        - NEXT_PUBLIC_URL_BACKEND=${NEXT_PUBLIC_URL_BACKEND:?Falta NEXT_PUBLIC_URL_BACKEND en .env}
     ports:
       - ${CODE_MANAGER_FRONTEND_PORT}:${CODE_MANAGER_FRONTEND_PORT}
     environment:
-      - URL_BACKEND=${URL_BACKEND:?Falta URL_BACKEND en .env}
-      - NEXT_PUBLIC_URL_BACKEND=${NEXT_PUBLIC_URL_BACKEND}
+      # Lo usa solo el servidor de Next (también para reenviar las peticiones del navegador
+      # vía /api/backend). Dentro de Docker: http://code-manager-backend:<puerto>/api
+      - URL_BACKEND=${URL_BACKEND:-http://code-manager-backend:${CODE_MANAGER_BACKEND_PORT}/api}
       - NEXTAUTH_URL=${NEXTAUTH_URL:?Falta NEXTAUTH_URL en .env}
       - URL_FRONTEND=${URL_FRONTEND:-}
       - AUTH_SECRET=${AUTH_SECRET:?Falta AUTH_SECRET en .env}
